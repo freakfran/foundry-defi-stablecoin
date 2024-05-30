@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.18;
+pragma solidity ^0.8.19;
 
 import {Script} from "lib/forge-std/src/Script.sol";
 import {MockV3Aggregator} from "test/mocks/MockV3Aggregator.sol";
-import {MockERC20} from "lib/forge-std/src/mocks/MockERC20.sol";
+import {ERC20Mock} from "lib/openzeppelin-contracts/contracts/mocks/token/ERC20Mock.sol";
 
 contract HelpConfig is Script {
     struct NetConfig {
@@ -19,6 +19,7 @@ contract HelpConfig is Script {
     int256 public constant ETH_USD_PRICE = 2000e8;
     int256 public constant BTC_USD_PRICE = 1000e8;
     NetConfig public activeNetworkConfig;
+    address USER = makeAddr("user");
 
     constructor() {
         if (block.chainid == 11155111) {
@@ -45,11 +46,11 @@ contract HelpConfig is Script {
         }
         vm.startBroadcast();
         MockV3Aggregator wethUsdPriceFeedMock = new MockV3Aggregator(DECIMAL_USD, ETH_USD_PRICE);
-        MockERC20 wethMock = new MockERC20();
-        wethMock.initialize("WETH", "WETH", 18);
+        ERC20Mock wethMock = new ERC20Mock();
+        wethMock.mint(USER, 1000e18);
         MockV3Aggregator wbtcUsdPriceFeedMock = new MockV3Aggregator(DECIMAL_USD, BTC_USD_PRICE);
-        MockERC20 wbtcMock = new MockERC20();
-        wbtcMock.initialize("WBTC", "WBTC", 18);
+        ERC20Mock wbtcMock = new ERC20Mock();
+        wethMock.mint(USER, 1000e18);
         vm.stopBroadcast();
 
         NetConfig memory anvilConfig = NetConfig({

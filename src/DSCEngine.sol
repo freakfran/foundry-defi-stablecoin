@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.18;
+pragma solidity ^0.8.19;
 
 import {DecentralizedStableCoin} from "./DecentralizedStableCoin.sol";
 import {ReentrancyGuard} from "lib/openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
@@ -250,10 +250,18 @@ contract DSCEngine is ReentrancyGuard {
 
     /// 健康因子
     /// @dev 用户距离被清算的距离，如果低于1e18，将被清算
-    /// @param 用户地址
+    /// @param user 用户地址
     function _healthFactor(address user) private view returns (uint256) {
-        // 100DSC , 200USD value
         (uint256 totalDscMinted, uint256 collateralValueInUsd) = _getAccountInformation(user);
+        return _calculateHealthFactor(totalDscMinted, collateralValueInUsd);
+    }
+
+    function _calculateHealthFactor(uint256 totalDscMinted, uint256 collateralValueInUsd)
+        internal
+        pure
+        returns (uint256)
+    {
+        // 100DSC , 200USD value
         if (totalDscMinted == 0) {
             return type(uint256).max;
         }
@@ -265,17 +273,35 @@ contract DSCEngine is ReentrancyGuard {
 
     function _revertIfHealthFactorIsBroken(address _user) internal view {
         uint256 healthFactor = _healthFactor(_user);
-        if (healthFactor < 1) {
+        if (healthFactor < MIN_HEALTH_FACTOR) {
             revert DSCEngine__HealthFactorIsBroken(healthFactor);
         }
+    }
+
+    function _getUsdValue(address token, uint256 amount) private view returns (uint256) {
+        AggregatorV3Interface priceFeed = AggregatorV3Interface(s_priceFeeds[token]);
+        (, int256 price,,,) = priceFeed.latestRoundData();
+        //1eth = 1000usd
+        //amount = 1
+        //1000e8 * 1e10 * 1 / 1e18 = 1000
+        return ((uint256(price) * ADDITIONAL_FEED_PRECISION) * amount) / PRECISION;
     }
 
     /*//////////////////////////////////////////////////////////////////////////
                     external&public view&pure functions
     //////////////////////////////////////////////////////////////////////////*/
+    function getAccountInformation(address user)
+        external
+        view
+        returns (uint256 totalDscMinted, uint256 collateralValueInUsd)
+    {
+        (totalDscMinted, collateralValueInUsd) = _getAccountInformation(user);
+        return (totalDscMinted, collateralValueInUsd);
+    }
     /// 用户质押品的美元价值
     /// @dev 获取用户每种质押品的美元价值，并将其相加返回
     /// @param user 用户地址
+
     function getAccountCollateralValueInUsd(address user) public view returns (uint256) {
         uint256 totalCollateralValueInUsd = 0;
         for (uint256 i = 0; i < s_collateralTokens.length; i++) {
@@ -290,22 +316,69 @@ contract DSCEngine is ReentrancyGuard {
     /// @param token token地址
     /// @param amount token数量
     function getUsdValue(address token, uint256 amount) public view returns (uint256) {
-        AggregatorV3Interface priceFeed = AggregatorV3Interface(s_priceFeeds[token]);
-        (, int256 price,,,) = priceFeed.latestRoundData();
-        //1eth = 1000usd
-        //amount = 1
-        //1000e8 * 1e10 * 1 / 1e18 = 1000
-        return (uint256(price) * ADDITIONAL_FEED_PRECISION * amount) / 1e18;
+        return _getUsdValue(token, amount);
     }
 
     /// usd能换多少token
     /// @param token token地址
-    /// @param usdAmountInWei usd数量
+    /// @param usdAmountInWei usd数量 1 ether代表1 usd
     function getTokenAmountFromUsd(address token, uint256 usdAmountInWei) public view returns (uint256) {
         AggregatorV3Interface priceFeed = AggregatorV3Interface(s_priceFeeds[token]);
         (, int256 price,,,) = priceFeed.latestRoundData();
         //1ETH => 1000USD
         //1e18 * 1e18 / 1000e8 * 1e10 = 1e18 / 1000 = 1e15
         return (usdAmountInWei * PRECISION) / (uint256(price) * ADDITIONAL_FEED_PRECISION);
+    }
+
+    function calculateHealthFactor(uint256 totalDscMinted, uint256 collateralValueInUsd)
+        external
+        pure
+        returns (uint256)
+    {
+        return _calculateHealthFactor(totalDscMinted, collateralValueInUsd);
+    }
+
+    function getPrecision() external pure returns (uint256) {
+        return PRECISION;
+    }
+
+    function getAdditionalFeedPrecision() external pure returns (uint256) {
+        return ADDITIONAL_FEED_PRECISION;
+    }
+
+    function getLiquidationThreshold() external pure returns (uint256) {
+        return LIQUIDATION_THRESHOLD;
+    }
+
+    function getLiquidationBonus() external pure returns (uint256) {
+        return LIQUIDATION_BONUS;
+    }
+
+    function getLiquidationPrecision() external pure returns (uint256) {
+        return LIQUIDATION_PRECISION;
+    }
+
+    function getMinHealthFactor() external pure returns (uint256) {
+        return MIN_HEALTH_FACTOR;
+    }
+
+    function getCollateralTokens() external view returns (address[] memory) {
+        return s_collateralTokens;
+    }
+
+    function getDsc() external view returns (address) {
+        return address(i_dsc);
+    }
+
+    function getCollateralTokenPriceFeed(address token) external view returns (address) {
+        return s_priceFeeds[token];
+    }
+
+    function getHealthFactor(address user) external view returns (uint256) {
+        return _healthFactor(user);
+    }
+
+    function getCollateralBalanceOfUser(address user, address token) external view returns (uint256) {
+        return s_collateralDeposited[user][token];
     }
 }
