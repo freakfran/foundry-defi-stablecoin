@@ -5,7 +5,7 @@ import {Test, console} from "forge-std/Test.sol";
 import {DecentralizedStableCoin} from "src/DecentralizedStableCoin.sol";
 import {DSCEngine} from "src/DSCEngine.sol";
 import {DeployDSC} from "script/DeployDSC.s.sol";
-import {HelpConfig} from "script/HelpConfig.s.sol";
+import {HelperConfig} from "script/HelperConfig.s.sol";
 import {ERC20Mock} from "lib/openzeppelin-contracts/contracts/mocks/token/ERC20Mock.sol";
 import "./mocks/MockFailedMintDSC.sol";
 import "./mocks/MockFailedTransfer.sol";
@@ -14,7 +14,7 @@ import "./mocks/MockMoreDebtDSC.sol";
 contract DSCEngineTest is Test {
     DSCEngine public engine;
     DecentralizedStableCoin public dsc;
-    HelpConfig public config;
+    HelperConfig public config;
     address wethUsdPriceFeed;
     address wbtcUsdPriceFeed;
     address weth;
@@ -91,6 +91,7 @@ contract DSCEngineTest is Test {
     }
 
     function testRevertIfCollateralNotSupported(address randomToken) public {
+        vm.assume(randomToken != weth && randomToken != wbtc);
         vm.startPrank(USER);
         ERC20Mock(weth).approve(address(engine), AMOUNT_COLLATERAL);
         vm.expectRevert(DSCEngine.DSCEngine__TokenNotAllowed.selector);

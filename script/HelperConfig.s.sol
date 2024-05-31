@@ -6,7 +6,7 @@ import {Script} from "lib/forge-std/src/Script.sol";
 import {MockV3Aggregator} from "test/mocks/MockV3Aggregator.sol";
 import {ERC20Mock} from "lib/openzeppelin-contracts/contracts/mocks/token/ERC20Mock.sol";
 
-contract HelpConfig is Script {
+contract HelperConfig is Script {
     struct NetConfig {
         address wethUsdPriceFeed;
         address wbtcUsdPriceFeed;
@@ -50,7 +50,7 @@ contract HelpConfig is Script {
         wethMock.mint(USER, 1000e18);
         MockV3Aggregator wbtcUsdPriceFeedMock = new MockV3Aggregator(DECIMAL_USD, BTC_USD_PRICE);
         ERC20Mock wbtcMock = new ERC20Mock();
-        wethMock.mint(USER, 1000e18);
+        wbtcMock.mint(USER, 1000e18);
         vm.stopBroadcast();
 
         NetConfig memory anvilConfig = NetConfig({
